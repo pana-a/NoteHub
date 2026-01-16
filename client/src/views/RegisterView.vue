@@ -74,7 +74,7 @@ function handleRegister() {
 .app-header {
   width: 100%;
   height: 56px;
-  background: #4F46E5;
+  background: var(--color-primary);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
@@ -99,15 +99,15 @@ function handleRegister() {
   min-height: calc(100vh - 56px);
   display: grid;
   place-items: center;
-  background: #F6F7FB;
+  background: var(--color-bg);
   padding: 24px;
 }
 
 .auth-card {
   width: 100%;
   max-width: 420px;
-  background: #FFFFFF;
-  border: 1px solid #E5E7EB;
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 22px;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
@@ -116,7 +116,7 @@ function handleRegister() {
 .auth-card h1 {
   margin: 0 0 18px;
   font-size: 24px;
-  color: #1F2937;
+  color: var(--color-text);
 }
 
 .form-group {
@@ -128,21 +128,22 @@ label {
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 6px;
-  color: #1F2937;
+  color: var(--color-text);
 }
 
 input {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #E5E7EB;
+  border: 1px solid var(--color-border);
   border-radius: 10px;
   font-size: 14px;
-  color: #1F2937;
+  color: var(--color-text);
+  background: var(--color-card);
 }
 
 input:focus {
   outline: none;
-  border-color:#6366F1;
+  border-color: var(--color-primary-light);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 
@@ -152,7 +153,7 @@ button {
   padding: 10px 12px;
   border: none;
   border-radius: 10px;
-  background: #4F46E5;
+  background: var(--color-primary);
   color: white;
   font-weight: 700;
   cursor: pointer;
@@ -161,11 +162,11 @@ button {
 .auth-footer {
   margin-top: 14px;
   font-size: 14px;
-  color: #4B5563;
+  color: var(--color-text-muted);
 }
 
 .auth-footer a {
-  color: #4F46E5;
+  color: var(--color-primary);
   font-weight: 600;
   text-decoration: none;
 }
