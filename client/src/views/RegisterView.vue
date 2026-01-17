@@ -1,8 +1,6 @@
 <template>
   <header class="app-header">
-    <div class="app-header-inner">
-      NotesHUB
-    </div>
+    <div class="app-header-inner">NotesHUB</div>
   </header>
 
   <main class="page">
@@ -14,10 +12,14 @@
           <label>Email</label>
           <input
             type="email"
-            v-model="email"
-            required
+            v-model.trim="email"
             placeholder="nume.prenume@ase.ro"
+            :class="{ 'input-error': touched.email && emailError }"
+            @blur="touched.email = true"
           />
+          <p v-if="touched.email && emailError" class="field-error">
+            {{ emailError }}
+          </p>
         </div>
 
         <div class="form-group">
@@ -25,9 +27,12 @@
           <input
             type="password"
             v-model="password"
-            required
-            minlength="6"
+            :class="{ 'input-error': touched.password && passwordError }"
+            @blur="touched.password = true"
           />
+          <p v-if="touched.password && passwordError" class="field-error">
+            {{ passwordError }}
+          </p>
         </div>
 
         <div class="form-group">
@@ -35,12 +40,18 @@
           <input
             type="password"
             v-model="confirmPassword"
-            required
+            :class="{ 'input-error': touched.confirmPassword && confirmError }"
+            @blur="touched.confirmPassword = true"
           />
+          <p v-if="touched.confirmPassword && confirmError" class="field-error">
+            {{ confirmError }}
+          </p>
         </div>
 
-        <button type="submit">
-          Create account
+        <p v-if="errorMsg" class="error">{{ errorMsg }}</p>
+
+        <button type="submit" :disabled="loading">
+          {{ loading ? 'Creating account...' : 'Create account' }}
         </button>
       </form>
 
@@ -53,20 +64,70 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { ref, reactive, computed } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
+const router = useRouter()
+const authStore = useAuthStore()
 
 const email = ref('')
 const password = ref('')
 const confirmPassword = ref('')
+const errorMsg = ref('')
+const loading = ref(false)
 
-function handleRegister() {
-  if (password.value !== confirmPassword.value) {
-    alert('Parolele nu coincid')
-    return
+const touched = reactive({
+  email: false,
+  password: false,
+  confirmPassword: false
+})
+
+const emailError = computed(() => {
+  if (!email.value) return 'Email is required'
+  const validEmail = /^\S+@\S+\.\S+$/.test(email.value)
+  if (!validEmail) return 'Please enter a valid email'
+  if (!email.value.toLowerCase().endsWith('@ase.ro'))
+    return 'Use your institutional email (@ase.ro)'
+  return ''
+})
+
+const passwordError = computed(() => {
+  if (!password.value) return 'Password is required'
+  if (password.value.length < 8)
+    return 'Password must be at least 8 characters!'
+  return ''
+})
+
+const confirmError = computed(() => {
+  if (!confirmPassword.value) return 'Please confirm password'
+  if (confirmPassword.value !== password.value)
+    return 'Passwords do not match!'
+  return ''
+})
+
+const formValid = computed(() => {
+  return !emailError.value && !passwordError.value && !confirmError.value
+})
+
+async function handleRegister() {
+  errorMsg.value = ''
+
+  touched.email = true
+  touched.password = true
+  touched.confirmPassword = true
+
+  if (!formValid.value) return
+
+  loading.value = true
+  try {
+    await authStore.register(email.value, password.value)
+    router.push('/notes')
+  } catch (err) {
+    errorMsg.value = err?.message || 'Registration failed'
+  } finally {
+    loading.value = false
   }
-
-  console.log('Register:', email.value, password.value)
 }
 </script>
 
@@ -82,17 +143,11 @@ function handleRegister() {
   max-width: 1200px;
   height: 100%;
   padding: 0 24px;
-
-  margin-left: 0;
-  margin-right: auto;
-
   display: flex;
   align-items: center;
-
-  color: #fff;
+  color: white;
   font-weight: 800;
   font-size: 18px;
-  letter-spacing: 0.5px;
 }
 
 .page {
@@ -114,9 +169,8 @@ function handleRegister() {
 }
 
 .auth-card h1 {
-  margin: 0 0 18px;
+  margin-bottom: 18px;
   font-size: 24px;
-  color: var(--color-text);
 }
 
 .form-group {
@@ -128,7 +182,6 @@ label {
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 6px;
-  color: var(--color-text);
 }
 
 input {
@@ -137,26 +190,48 @@ input {
   border: 1px solid var(--color-border);
   border-radius: 10px;
   font-size: 14px;
-  color: var(--color-text);
-  background: var(--color-card);
 }
 
 input:focus {
   outline: none;
   border-color: var(--color-primary-light);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+}
+
+.field-error {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+.input-error {
+  border-color: rgba(239, 68, 68, 0.6);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+.error {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #b91c1c;
 }
 
 button {
   width: 100%;
-  margin-top: 10px;
-  padding: 10px 12px;
+  margin-top: 12px;
+  padding: 10px;
   border: none;
   border-radius: 10px;
   background: var(--color-primary);
   color: white;
   font-weight: 700;
   cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
 
 .auth-footer {
@@ -170,4 +245,9 @@ button {
   font-weight: 600;
   text-decoration: none;
 }
+
+.auth-footer a:hover {
+  background: white
+}
+
 </style>
