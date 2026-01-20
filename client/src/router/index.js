@@ -21,25 +21,43 @@ const router = createRouter({
     {
       path: '/notes',
       name: 'notes',
-      component: () => import ('../views/NotesView.vue')
+      component: () => import ('../views/NotesView.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/notes/new',
       name: 'noteCreate',
-      component: () => import ('../views/NoteCreateView.vue')
+      component: () => import ('../views/NoteCreateView.vue'),
+      meta: { requiresAuth: true }
     },
     {
       path: '/notes/:id',
       name: 'noteDetails',
-      component: () => import ('../views/NoteDetailsView.vue')
+      component: () => import ('../views/NoteDetailsView.vue'),
+      meta: { requiresAuth: true }
     },
 
     {
       path: '/invitations',
       name: 'invitations',
-      component: () => import ('../views/InvitationsView.vue')
+      component: () => import ('../views/InvitationsView.vue'),
+      meta: { requiresAuth: true }
     }
   ],
+})
+
+import { useAuthStore } from '@/stores/auth'
+
+router.beforeEach((to) => {
+  const authStore = useAuthStore()
+
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    return { name: 'login' }
+  }
+
+  if ((to.name === 'login' || to.name === 'register') && authStore.isAuthenticated) {
+    return { name: 'notes' }
+  }
 })
 
 export default router
