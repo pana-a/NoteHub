@@ -19,6 +19,27 @@ const findAllByOwner = async (ownerId) => {
   return notes;
 };
 
+const findAllAccessibleForUser = async (userId) => {
+  const [ownedSnap, sharedSnap] = await Promise.all([
+    notesCollection.where('ownerId', '==', userId).get(),
+    notesCollection.where('sharedWith', 'array-contains', userId).get()
+  ])
+  
+  const map = new Map()
+
+  ownedSnap.forEach((doc) => {
+    map.set(doc.id, { id: doc.id, ...doc.data(), access: 'owner' })
+  })
+
+  sharedSnap.forEach((doc) => {
+    if (!map.has(doc.id)) {
+      map.set(doc.id, { id: doc.id, ...doc.data(), access: 'shared' })
+    }
+  })
+
+  return Array.from(map.values())
+}
+
 const findById = async (id) => {
   const doc = await notesCollection.doc(id).get();
 
@@ -56,6 +77,7 @@ const remove = async (id) => {
 
 module.exports = {
   findAllByOwner,
+  findAllAccessibleForUser,
   findById,
   create,
   update,

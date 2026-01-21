@@ -1,6 +1,6 @@
 const { validationResult } = require('express-validator');
 const {
-  findAllByOwner,
+  findAllAccessibleForUser,
   findById,
   create,
   update,
@@ -10,7 +10,7 @@ const {
 const getAllNotes = async (req, res) => {
   try {
     const ownerId = req.user.userId;
-    const notes = await findAllByOwner(ownerId);
+    const notes = await findAllAccessibleForUser(ownerId);
     res.status(200).json(notes);
   } catch (error) {
     console.error('Error fetching notes:', error);
@@ -20,23 +20,29 @@ const getAllNotes = async (req, res) => {
 
 const getNoteById = async (req, res) => {
   try {
-    const id = req.params.id;
-    const note = await findById(id);
+    const id = req.params.id
+    const userId = req.user.userId
+
+    const note = await findById(id)
 
     if (!note) {
-      return res.status(404).json({ error: 'Note not found' });
+      return res.status(404).json({ error: 'Note not found' })
     }
 
-    if (note.ownerId !== req.user.userId) {
-      return res.status(403).json({ error: 'Forbidden' });
+    const isOwner = note.ownerId === userId
+    const isShared =
+      Array.isArray(note.sharedWith) && note.sharedWith.includes(userId)
+
+    if (!isOwner && !isShared) {
+      return res.status(403).json({ error: 'Forbidden' })
     }
 
-    res.status(200).json(note);
+    return res.status(200).json(note)
   } catch (error) {
-    console.error('Error fetching note:', error);
-    res.status(500).json({ error: 'Failed to fetch note' });
+    console.error('Error fetching note:', error)
+    return res.status(500).json({ error: 'Failed to fetch note' })
   }
-};
+}
 
 const createNote = async (req, res) => {
   const validationErrors = validationResult(req);
