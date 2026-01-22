@@ -1,8 +1,5 @@
 <template>
-  <header class="app-header">
-    <div class="app-header-inner">NotesHUB</div>
-  </header>
-
+ <AppHeader />
   <main class="page">
     <div class="auth-card">
       <h1>Register</h1>
@@ -67,6 +64,7 @@
 import { ref, reactive, computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import AppHeader from '@/components/AppHeader.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -132,24 +130,6 @@ async function handleRegister() {
 </script>
 
 <style scoped>
-.app-header {
-  width: 100%;
-  height: 56px;
-  background: var(--color-primary);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-}
-
-.app-header-inner {
-  max-width: 1200px;
-  height: 100%;
-  padding: 0 24px;
-  display: flex;
-  align-items: center;
-  color: white;
-  font-weight: 800;
-  font-size: 18px;
-}
-
 .page {
   min-height: calc(100vh - 56px);
   display: grid;

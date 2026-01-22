@@ -1,8 +1,5 @@
 <template>
-  <header class="app-header">
-    <div class="app-header-inner">NotesHUB</div>
-  </header>
-
+  <AppHeader />
   <main class="page">
     <section class="content">
       <div class="content-header">
@@ -63,17 +60,30 @@
       </div>
     </section>
   </main>
+  <ConfirmDialog
+    v-if="showDeleteDialog"
+    title="Delete note?"
+    message="This action cannot be undone."
+    confirmText="Delete"
+    @confirm="confirmDelete"
+    @cancel="cancelDelete"
+  />
 </template>
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useNotesStore } from '@/stores/notes'
+import AppHeader from '@/components/AppHeader.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const router = useRouter()
 const notesStore = useNotesStore()
 
 const openMenuId = ref(null)
+
+const showDeleteDialog = ref(false)
+const noteIdToDelete = ref(null)
 
 onMounted(async () => {
   await notesStore.fetchNotes()
@@ -106,13 +116,24 @@ function editNote(id) {
   router.push({ path: `/notes/${id}`, query: { mode: 'edit' } })
 }
 
-async function deleteNote(id) {
+function deleteNote(id) {
   closeMenu()
+  noteIdToDelete.value = id
+  showDeleteDialog.value = true
+}
 
-  const ok = confirm('Delete this note? This action cannot be undone.')
-  if (!ok) return
+async function confirmDelete() {
+  if (!noteIdToDelete.value) return
 
-  await notesStore.deleteNote(id)
+  await notesStore.deleteNote(noteIdToDelete.value)
+
+  showDeleteDialog.value = false
+  noteIdToDelete.value = null
+}
+
+function cancelDelete() {
+  showDeleteDialog.value = false
+  noteIdToDelete.value = null
 }
 
 function preview(text) {
@@ -124,25 +145,6 @@ function preview(text) {
 </script>
 
 <style scoped>
-.app-header {
-  width: 100%;
-  height: 56px;
-  background: var(--color-primary);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-}
-
-.app-header-inner {
-  max-width: 1200px;
-  height: 100%;
-  margin: 0 auto;
-  padding: 0 24px;
-  display: flex;
-  align-items: center;
-  color: white;
-  font-weight: 800;
-  font-size: 18px;
-}
-
 .page {
   min-height: calc(100vh - 56px);
   background: var(--color-bg);

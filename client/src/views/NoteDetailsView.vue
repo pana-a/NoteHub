@@ -1,8 +1,5 @@
 <template>
-  <header class="app-header">
-    <div class="app-header-inner">NotesHUB</div>
-  </header>
-
+  <AppHeader />
   <main class="page">
     <div class="card">
       <div class="card-header">
@@ -12,7 +9,7 @@
           <button v-if="!isEditMode" class="btn secondary" type="button" @click="enterEdit">
             Edit
           </button>
-          <button class="btn danger" type="button" @click="handleDelete">
+          <button class="btn danger" type="button" @click="openDeleteDialog">
             Delete
           </button>
         </div>
@@ -83,12 +80,23 @@
       </template>
     </div>
   </main>
+
+  <ConfirmDialog
+    v-if="showDeleteDialog"
+    title="Delete note?"
+    message="This action cannot be undone."
+    confirmText="Delete"
+    @confirm="confirmDelete"
+    @cancel="cancelDelete"
+  />
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useNotesStore } from '@/stores/notes'
+import AppHeader from '@/components/AppHeader.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -101,6 +109,7 @@ const saving = ref(false)
 const errorMsg = ref('')
 
 const isEditMode = computed(() => route.query.mode === 'edit')
+const showDeleteDialog = ref(false)
 
 const form = reactive({
   title: '',
@@ -136,7 +145,7 @@ function parseTags(input) {
   if (!input) return []
   return input
     .split(',')
-    .map(t => t.trim())
+    .map((t) => t.trim())
     .filter(Boolean)
     .slice(0, 20)
 }
@@ -216,10 +225,17 @@ async function handleSave() {
   }
 }
 
-async function handleDelete() {
+function openDeleteDialog() {
   errorMsg.value = ''
-  const ok = confirm('Delete this note? This action cannot be undone.')
-  if (!ok) return
+  showDeleteDialog.value = true
+}
+
+function cancelDelete() {
+  showDeleteDialog.value = false
+}
+
+async function confirmDelete() {
+  showDeleteDialog.value = false
 
   try {
     const id = route.params.id
@@ -238,25 +254,6 @@ onMounted(loadNote)
 </script>
 
 <style scoped>
-.app-header {
-  width: 100%;
-  height: 56px;
-  background: var(--color-primary);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-}
-
-.app-header-inner {
-  max-width: 1200px;
-  height: 100%;
-  margin: 0 auto;
-  padding: 0 24px;
-  display: flex;
-  align-items: center;
-  color: white;
-  font-weight: 800;
-  font-size: 18px;
-}
-
 .page {
   min-height: calc(100vh - 56px);
   display: grid;

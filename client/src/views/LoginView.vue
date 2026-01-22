@@ -1,8 +1,5 @@
 <template>
-  <header class="app-header">
-    <div class="app-header-inner">NotesHUB</div>
-  </header>
-
+  <AppHeader />
   <main class="page">
     <div class="auth-card">
       <h1>Login</h1>
@@ -35,7 +32,6 @@
           </p>
         </div>
 
-        <!-- BACKEND ERROR -->
         <p v-if="errorMsg" class="error">{{ errorMsg }}</p>
 
         <button type="submit" :disabled="loading">
@@ -55,6 +51,7 @@
 import { ref, reactive, computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import AppHeader from '@/components/AppHeader.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -108,26 +105,6 @@ async function handleLogin() {
 </script>
 
 <style scoped>
-/* layout */
-.app-header {
-  width: 100%;
-  height: 56px;
-  background: var(--color-primary);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-}
-
-.app-header-inner {
-  max-width: 1200px;
-  height: 100%;
-  margin: 0;
-  padding: 0 24px;
-  display: flex;
-  align-items: center;
-  color: white;
-  font-weight: 800;
-  font-size: 18px;
-}
-
 .page {
   min-height: calc(100vh - 56px);
   display: grid;
@@ -151,7 +128,6 @@ async function handleLogin() {
   font-size: 24px;
 }
 
-/* form */
 .form-group {
   margin-bottom: 14px;
 }
@@ -176,7 +152,6 @@ input:focus {
   border-color: var(--color-primary-light);
 }
 
-/* errors */
 .field-error {
   margin-top: 6px;
   font-size: 13px;
@@ -197,7 +172,6 @@ input:focus {
   color: #b91c1c;
 }
 
-/* button */
 button {
   width: 100%;
   margin-top: 12px;
