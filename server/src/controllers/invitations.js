@@ -17,7 +17,37 @@ const listMyInvitations = async (req, res) => {
   try {
     const email = req.user.email
     const invites = await findPendingForEmail(email)
-    return res.status(200).json(invites)
+
+    const noteIds = Array.from(
+      new Set(invites.map((i) => i.noteId).filter(Boolean))
+    )
+
+    const noteDocs = await Promise.all(
+      noteIds.map((id) => notesCollection.doc(id).get())
+    )
+
+    const noteMap = new Map()
+    noteDocs.forEach((doc) => {
+      if (!doc.exists) return
+      const data = doc.data() || {}
+
+      const title = data.title || 'Untitled'
+      const content = typeof data.content === 'string' ? data.content : ''
+      const trimmed = content.trim()
+      const preview =
+        trimmed.length <= 160 ? trimmed : trimmed.slice(0, 160) + '...'
+
+      const tags = Array.isArray(data.tags) ? data.tags : []
+
+      noteMap.set(doc.id, { title, preview, tags })
+    })
+
+    const enriched = invites.map((inv) => ({
+      ...inv,
+      note: noteMap.get(inv.noteId) || null
+    }))
+
+    return res.status(200).json(enriched)
   } catch (error) {
     console.error('List invitations error:', error)
     return res.status(500).json({ error: 'Failed to list invitations' })

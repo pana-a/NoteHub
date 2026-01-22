@@ -12,6 +12,8 @@
 
       <p v-if="notesStore.error" class="error">{{ notesStore.error }}</p>
 
+      <p v-if="inviteErrorText" class="error">{{ inviteErrorText }}</p>
+
       <div v-if="notesStore.isLoading" class="state">Loading notes...</div>
 
       <div v-else-if="notesStore.notes.length === 0" class="empty">
@@ -30,7 +32,10 @@
           @keydown.enter="goToNote(note.id)"
         >
           <div class="card-top">
-            <h3 class="title">{{ note.title }}</h3>
+            <div>
+              <h3 class="title">{{ note.title }}</h3>
+              <span v-if="note.access === 'shared'" class="shared-badge">Received</span>
+            </div>
 
             <div class="menu-wrap" @click.stop>
               <button class="menu-btn" type="button" @click.stop="toggleMenu(note.id)">
@@ -41,11 +46,41 @@
                 <button class="menu-item" type="button" @click="viewNote(note.id)">
                   View
                 </button>
-                <button class="menu-item" type="button" @click="editNote(note.id)">
+
+                <button
+                  v-if="note.access === 'owner'"
+                  class="menu-item"
+                  type="button"
+                  @click="editNote(note.id)"
+                >
                   Edit
                 </button>
-                <button class="menu-item danger" type="button" @click="deleteNote(note.id)">
+
+                <button
+                  v-if="note.access === 'owner'"
+                  class="menu-item"
+                  type="button"
+                  @click="openInvite(note.id)"
+                >
+                  Invite
+                </button>
+
+                <button
+                  v-if="note.access === 'owner'"
+                  class="menu-item danger"
+                  type="button"
+                  @click="deleteNote(note.id)"
+                >
                   Delete
+                </button>
+
+                <button
+                  v-if="note.access === 'shared'"
+                  class="menu-item danger"
+                  type="button"
+                  @click="removeAccess(note.id)"
+                >
+                  Remove
                 </button>
               </div>
             </div>
@@ -60,6 +95,7 @@
       </div>
     </section>
   </main>
+
   <ConfirmDialog
     v-if="showDeleteDialog"
     title="Delete note?"
@@ -68,22 +104,55 @@
     @confirm="confirmDelete"
     @cancel="cancelDelete"
   />
+
+  <ConfirmDialog
+    v-if="showRemoveDialog"
+    title="Remove access?"
+    message="You will no longer see this note."
+    confirmText="Remove"
+    @confirm="confirmRemove"
+    @cancel="cancelRemove"
+  />
+
+  <InviteDialog
+    v-if="showInviteDialog"
+    title="Invite someone"
+    message="Enter an institutional email to share this note."
+    confirmText="Send invite"
+    :loading="inviteSending"
+    :error="inviteDialogError"
+    @confirm="confirmInvite"
+    @cancel="cancelInvite"
+  />
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useNotesStore } from '@/stores/notes'
+import { useInvitationsStore } from '@/stores/invitations'
 import AppHeader from '@/components/AppHeader.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import InviteDialog from '@/components/InviteDialog.vue'
 
 const router = useRouter()
 const notesStore = useNotesStore()
+const invitationsStore = useInvitationsStore()
 
 const openMenuId = ref(null)
 
 const showDeleteDialog = ref(false)
 const noteIdToDelete = ref(null)
+
+const showRemoveDialog = ref(false)
+const noteIdToRemove = ref(null)
+
+const showInviteDialog = ref(false)
+const noteIdToInvite = ref(null)
+const inviteSending = ref(false)
+const inviteDialogError = ref('')
+
+const inviteErrorText = computed(() => invitationsStore.error)
 
 onMounted(async () => {
   await notesStore.fetchNotes()
@@ -136,6 +205,59 @@ function cancelDelete() {
   noteIdToDelete.value = null
 }
 
+function removeAccess(id) {
+  closeMenu()
+  noteIdToRemove.value = id
+  showRemoveDialog.value = true
+}
+
+async function confirmRemove() {
+  if (!noteIdToRemove.value) return
+
+  await notesStore.leaveSharedNote(noteIdToRemove.value)
+
+  showRemoveDialog.value = false
+  noteIdToRemove.value = null
+}
+
+function cancelRemove() {
+  showRemoveDialog.value = false
+  noteIdToRemove.value = null
+}
+
+function openInvite(noteId) {
+  closeMenu()
+  inviteDialogError.value = ''
+  noteIdToInvite.value = noteId
+  showInviteDialog.value = true
+}
+
+function cancelInvite() {
+  showInviteDialog.value = false
+  noteIdToInvite.value = null
+  inviteDialogError.value = ''
+  inviteSending.value = false
+}
+
+async function confirmInvite(email) {
+  if (!noteIdToInvite.value) return
+
+  inviteDialogError.value = ''
+  inviteSending.value = true
+
+  try {
+    const ok = await invitationsStore.sendInvitation(noteIdToInvite.value, email)
+    if (!ok) {
+      inviteDialogError.value = invitationsStore.error || 'Failed to send invitation'
+      return
+    }
+
+    cancelInvite()
+  } finally {
+    inviteSending.value = false
+  }
+}
+
 function preview(text) {
   if (!text) return ''
   const trimmed = String(text).trim()
@@ -167,12 +289,6 @@ function preview(text) {
 h1 {
   margin: 0;
   font-size: 26px;
-}
-
-.subtitle {
-  margin: 6px 0 0 0;
-  color: var(--color-text-muted);
-  font-size: 14px;
 }
 
 .btn {
@@ -274,6 +390,17 @@ h1 {
   font-size: 16px;
   font-weight: 800;
   line-height: 1.2;
+}
+
+.shared-badge {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  background: rgba(59, 130, 246, 0.15);
+  color: #2563eb;
 }
 
 .preview {

@@ -6,11 +6,31 @@
         <RouterLink class="link" to="/notes">Back</RouterLink>
 
         <div class="actions">
-          <button v-if="!isEditMode" class="btn secondary" type="button" @click="enterEdit">
+          <button
+            v-if="canEdit && !isEditMode"
+            class="btn secondary"
+            type="button"
+            @click="enterEdit"
+          >
             Edit
           </button>
-          <button class="btn danger" type="button" @click="openDeleteDialog">
+
+          <button
+            v-if="isOwner"
+            class="btn danger"
+            type="button"
+            @click="openDeleteDialog"
+          >
             Delete
+          </button>
+
+          <button
+            v-if="!isOwner"
+            class="btn danger"
+            type="button"
+            @click="openRemoveDialog"
+          >
+            Remove
           </button>
         </div>
       </div>
@@ -89,18 +109,29 @@
     @confirm="confirmDelete"
     @cancel="cancelDelete"
   />
+
+  <ConfirmDialog
+    v-if="showRemoveDialog"
+    title="Remove access?"
+    message="You will no longer see this note."
+    confirmText="Remove"
+    @confirm="confirmRemove"
+    @cancel="cancelRemove"
+  />
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useNotesStore } from '@/stores/notes'
+import { useAuthStore } from '@/stores/auth'
 import AppHeader from '@/components/AppHeader.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const route = useRoute()
 const router = useRouter()
 const notesStore = useNotesStore()
+const authStore = useAuthStore()
 
 const note = ref(null)
 
@@ -109,7 +140,18 @@ const saving = ref(false)
 const errorMsg = ref('')
 
 const isEditMode = computed(() => route.query.mode === 'edit')
+
 const showDeleteDialog = ref(false)
+const showRemoveDialog = ref(false)
+
+const isOwner = computed(() => {
+  if (!note.value) return false
+  const myId = authStore.user?.id
+  if (!myId) return false
+  return note.value.ownerId === myId
+})
+
+const canEdit = computed(() => isOwner.value)
 
 const form = reactive({
   title: '',
@@ -171,6 +213,12 @@ async function loadNote() {
     form.title = data.title || ''
     form.content = data.content || ''
     form.tagsInput = tagsToInput(data.tags)
+
+    if (!isOwner.value && isEditMode.value) {
+      const q = { ...route.query }
+      delete q.mode
+      router.replace({ query: q })
+    }
   } catch (err) {
     errorMsg.value = err?.message || 'Failed to load note'
   } finally {
@@ -179,6 +227,7 @@ async function loadNote() {
 }
 
 function enterEdit() {
+  if (!canEdit.value) return
   router.replace({ query: { ...route.query, mode: 'edit' } })
 }
 
@@ -196,6 +245,8 @@ function cancelEdit() {
 }
 
 async function handleSave() {
+  if (!canEdit.value) return
+
   errorMsg.value = ''
   touched.title = true
   touched.content = true
@@ -247,6 +298,31 @@ async function confirmDelete() {
     router.push('/notes')
   } catch (err) {
     errorMsg.value = err?.message || 'Failed to delete note'
+  }
+}
+
+function openRemoveDialog() {
+  errorMsg.value = ''
+  showRemoveDialog.value = true
+}
+
+function cancelRemove() {
+  showRemoveDialog.value = false
+}
+
+async function confirmRemove() {
+  showRemoveDialog.value = false
+
+  try {
+    const id = route.params.id
+    const success = await notesStore.leaveSharedNote(id)
+    if (!success) {
+      throw new Error(notesStore.error || 'Failed to remove access')
+    }
+
+    router.push('/notes')
+  } catch (err) {
+    errorMsg.value = err?.message || 'Failed to remove access'
   }
 }
 

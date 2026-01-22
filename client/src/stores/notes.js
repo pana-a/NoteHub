@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { API_BASE_URL } from '@/utils/constants'
 import { useAuthStore } from './auth'
-import router from '@/router' 
+import router from '@/router'
 
 export const useNotesStore = defineStore('notes', () => {
   const notes = ref([])
@@ -165,6 +165,32 @@ export const useNotesStore = defineStore('notes', () => {
     }
   }
 
+  async function leaveSharedNote(id) {
+    const authStore = useAuthStore()
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/notes/${id}/leave`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${authStore.token}` }
+      })
+
+      if (handleAuthError(response.status)) return false
+
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data?.error || 'Failed to remove access.')
+
+      await fetchNotes()
+      return true
+    } catch (e) {
+      error.value = e.message
+      return false
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     notes,
     isLoading,
@@ -173,6 +199,7 @@ export const useNotesStore = defineStore('notes', () => {
     fetchNote,
     createNote,
     updateNote,
-    deleteNote
+    deleteNote,
+    leaveSharedNote
   }
 })
