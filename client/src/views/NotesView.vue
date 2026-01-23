@@ -5,9 +5,52 @@
       <div class="content-header">
         <div>
           <h1>All notes</h1>
+          <div class="filters">
+            <button
+              class="filter-btn"
+              :class="{ active: activeFilter === 'all' }"
+              type="button"
+              @click="activeFilter = 'all'"
+            >
+              All
+            </button>
+            <button
+              class="filter-btn"
+              :class="{ active: activeFilter === 'mine' }"
+              type="button"
+              @click="activeFilter = 'mine'"
+            >
+              My notes
+            </button>
+            <button
+              class="filter-btn"
+              :class="{ active: activeFilter === 'received' }"
+              type="button"
+              @click="activeFilter = 'received'"
+            >
+              Received
+            </button>
+          </div>
         </div>
 
         <RouterLink class="btn" to="/notes/new">+ New note</RouterLink>
+      </div>
+
+      <div class="search-row">
+        <input
+          v-model.trim="searchQuery"
+          type="text"
+          class="search-input"
+          placeholder="Search by title or content..."
+        />
+        <button
+          v-if="searchQuery"
+          class="clear-btn"
+          type="button"
+          @click="searchQuery = ''"
+        >
+          Clear
+        </button>
       </div>
 
       <p v-if="notesStore.error" class="error">{{ notesStore.error }}</p>
@@ -16,14 +59,21 @@
 
       <div v-if="notesStore.isLoading" class="state">Loading notes...</div>
 
-      <div v-else-if="notesStore.notes.length === 0" class="empty">
-        <h2>No notes yet</h2>
-        <p>Create your first note to see it here.</p>
+      <div v-else-if="filteredNotes.length === 0" class="empty">
+        <h2>No notes</h2>
+
+        <p v-if="searchQuery">No matching notes for your search.</p>
+
+        <template v-else>
+          <p v-if="activeFilter === 'all'">Create your first note to see it here.</p>
+          <p v-else-if="activeFilter === 'mine'">You don’t have any personal notes yet.</p>
+          <p v-else>You don’t have any received notes yet.</p>
+        </template>
       </div>
 
       <div v-else class="grid">
         <article
-          v-for="note in notesStore.notes"
+          v-for="note in filteredNotes"
           :key="note.id"
           class="note-card"
           role="button"
@@ -153,6 +203,30 @@ const inviteSending = ref(false)
 const inviteDialogError = ref('')
 
 const inviteErrorText = computed(() => invitationsStore.error)
+
+const activeFilter = ref('all')
+
+const searchQuery = ref('')
+
+const filteredNotes = computed(() => {
+  const all = Array.isArray(notesStore.notes) ? notesStore.notes : []
+
+  let list = all
+  if (activeFilter.value === 'mine') {
+    list = all.filter((n) => n.access !== 'shared')
+  } else if (activeFilter.value === 'received') {
+    list = all.filter((n) => n.access === 'shared')
+  }
+
+  const q = searchQuery.value.toLowerCase().trim()
+  if (!q) return list
+
+  return list.filter((n) => {
+    const title = (n.title || '').toLowerCase()
+    const content = (n.content || '').toLowerCase()
+    return title.includes(q) || content.includes(q)
+  })
+})
 
 onMounted(async () => {
   await notesStore.fetchNotes()
@@ -289,6 +363,74 @@ function preview(text) {
 h1 {
   margin: 0;
   font-size: 26px;
+}
+
+.filters {
+  margin-top: 10px;
+  display: inline-flex;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+}
+
+.filter-btn {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 800;
+  font-size: 13px;
+  color: #111827;
+}
+
+.filter-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.filter-btn.active {
+  background: rgba(59, 130, 246, 0.12);
+  border-color: rgba(59, 130, 246, 0.25);
+  color: #2563eb;
+}
+
+.search-row {
+  margin-top: 10px;
+  margin-bottom: 6px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.search-input {
+  width: 100%;
+  max-width: 360px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  font-size: 14px;
+  background: white;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--color-primary-light);
+}
+
+.clear-btn {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background: white;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.clear-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
 }
 
 .btn {
